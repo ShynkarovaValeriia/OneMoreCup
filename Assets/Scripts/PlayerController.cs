@@ -11,9 +11,13 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float mouseSensitivity = 2f;
     [SerializeField] private Transform playerCamera;
 
+    [Header("Interaction")]
+    [SerializeField] private InteractionUI interactionUI;
+
     private Rigidbody rb;
     private InputAction moveAction;
     private InputAction lookAction;
+    private InputAction interactAction;
 
     private float cameraRotationX = 0f;
 
@@ -23,23 +27,27 @@ public class PlayerController : MonoBehaviour
 
         moveAction = InputSystem.actions.FindAction("Move");
         lookAction = InputSystem.actions.FindAction("Look");
+        interactAction = InputSystem.actions.FindAction("Interact");
     }
 
     private void OnEnable()
     {
         moveAction?.Enable();
         lookAction?.Enable();
+        interactAction?.Enable();
     }
 
     private void OnDisable()
     {
         moveAction?.Disable();
         lookAction?.Disable();
+        interactAction?.Disable();
     }
 
     private void LateUpdate()
     {
         Look();
+        Interact();
     }
 
     private void FixedUpdate()
@@ -65,5 +73,32 @@ public class PlayerController : MonoBehaviour
 
         cameraRotationX = Mathf.Clamp(cameraRotationX - input.y, -90f, 90f);
         playerCamera.localRotation = Quaternion.Euler(cameraRotationX, 0f, 0f);
+    }
+
+    private void Interact()
+    {
+        //if (!interactAction.WasPressedThisFrame()) return;
+
+        // расстояние на котором игрок может доставать до предемета чтобы взаимодействовать
+        Ray ray = new Ray(playerCamera.position, playerCamera.forward);
+
+        if (Physics.Raycast(ray, out RaycastHit hit, 3f))
+        {
+            Interaction interactable = hit.collider.GetComponent<Interaction>();
+
+            if (interactable != null)
+            {
+                interactionUI.Show();
+
+                if (interactAction.WasPressedThisFrame())
+                {
+                    interactable.Interact();
+                }
+
+                return;
+            }
+        }
+
+        interactionUI.Hide();
     }
 }
