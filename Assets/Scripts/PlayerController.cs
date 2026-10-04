@@ -77,8 +77,6 @@ public class PlayerController : MonoBehaviour
 
     private void Interact()
     {
-        //if (!interactAction.WasPressedThisFrame()) return;
-
         // расстояние на котором игрок может доставать до предемета чтобы взаимодействовать
         Ray ray = new Ray(playerCamera.position, playerCamera.forward);
 
