@@ -1,0 +1,11 @@
+{
+    "name": "Matsenkomaria23.ComUnityCloudGltfast.Tests",
+    "references": [
+        "Matsenkomaria23.ComUnityCloudGltfast"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": []
+}

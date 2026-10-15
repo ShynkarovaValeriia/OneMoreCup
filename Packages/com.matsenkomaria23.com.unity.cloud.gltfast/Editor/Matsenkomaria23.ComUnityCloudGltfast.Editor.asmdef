@@ -1,0 +1,10 @@
+{
+    "name": "Matsenkomaria23.ComUnityCloudGltfast.Editor",
+    "references": [
+      "Matsenkomaria23.ComUnityCloudGltfast"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": []
+}

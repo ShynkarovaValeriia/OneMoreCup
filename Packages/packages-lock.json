@@ -1,5 +1,13 @@
 {
   "dependencies": {
+    "com.matsenkomaria23.com.unity.cloud.gltfast": {
+      "version": "file:com.matsenkomaria23.com.unity.cloud.gltfast",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.unity.test-framework": "1.6.0"
+      }
+    },
     "com.unity.ai.navigation": {
       "version": "2.0.14",
       "depth": 0,
