@@ -6,6 +6,7 @@ public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 3f;
+    [SerializeField] private float sprintSpeed = 4f;
 
     [Header("Look")]
     [SerializeField] private float mouseSensitivity = 2f;
@@ -58,9 +59,15 @@ public class PlayerController : MonoBehaviour
     private void Move()
     {
         Vector2 input = moveAction.ReadValue<Vector2>();
-
         Vector3 movement = transform.right * input.x + transform.forward * input.y;
-        Vector3 velocity = movement * moveSpeed;
+
+        float currentSpeed = moveSpeed;
+        if (UnityEngine.InputSystem.Keyboard.current != null && UnityEngine.InputSystem.Keyboard.current.leftShiftKey.isPressed)
+        {
+            currentSpeed = sprintSpeed;
+        }
+
+        Vector3 velocity = movement * currentSpeed;
 
         rb.linearVelocity = new Vector3(velocity.x, rb.linearVelocity.y, velocity.z);
     }
