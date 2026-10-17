@@ -9521,9 +9521,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ItemInspectionController
   playerCamera: {fileID: 397723442}
-  playerController: {fileID: 0}
-  inspectDistance: 1.2
+  playerController: {fileID: 580778560}
+  inspectDistance: 0.7
   rotationSpeed: 0.2
+  interactionUI: {fileID: 507943703}
 --- !u!1001 &600319064
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10247,7 +10248,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
   m_Size: {x: 46.228153, y: 21.44553, z: 20.30849}
   m_Center: {x: -71.64594, y: -5.8149567, z: 98.70235}

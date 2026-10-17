@@ -11,6 +11,8 @@ public class ItemInspectionController : MonoBehaviour
     [SerializeField] private float inspectDistance = 1.2f;
     [SerializeField] private float rotationSpeed = 0.2f;
 
+    [SerializeField] private InteractionUI interactionUI;
+
     private Transform inspectedItem;
     private Transform originalParent;
     private Vector3 originalPosition;
@@ -47,6 +49,9 @@ public class ItemInspectionController : MonoBehaviour
 
         previousCursorLock = Cursor.lockState;
         previousCursorVisibility = Cursor.visible;
+
+        if (interactionUI != null)
+            interactionUI.Hide();
 
         isInspecting = true;
 
