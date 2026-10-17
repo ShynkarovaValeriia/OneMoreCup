@@ -84,18 +84,32 @@ public class PlayerController : MonoBehaviour
 
     private void Interact()
     {
-        // расстояние на котором игрок может доставать до предемета чтобы взаимодействовать
         Ray ray = new Ray(playerCamera.position, playerCamera.forward);
 
         if (Physics.Raycast(ray, out RaycastHit hit, 3f))
         {
             Interaction interactable = hit.collider.GetComponent<Interaction>();
 
+            InspectableItem inspectableItem = hit.collider.GetComponentInParent<InspectableItem>();
+
+            if (interactable == null && inspectableItem != null)
+            {
+                interactable = inspectableItem;
+            }
+
             if (interactable != null)
             {
-                interactionUI.Show();
+                if (inspectableItem != null)
+                {
+                    interactionUI.Show(inspectableItem.ItemName);
+                }
+                else
+                {
+                    interactionUI.Show("Натисніть E");
+                }
 
-                if (interactAction.WasPressedThisFrame())
+                if (interactAction != null &&
+                    interactAction.WasPressedThisFrame())
                 {
                     interactable.Interact();
                 }
