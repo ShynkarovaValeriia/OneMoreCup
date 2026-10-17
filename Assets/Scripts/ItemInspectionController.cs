@@ -1,34 +1,53 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using TMPro;
 
 public class ItemInspectionController : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private Transform playerCamera;
     [SerializeField] private PlayerController playerController;
+    [SerializeField] private InteractionUI interactionUI;
+    [SerializeField] private InspectableItemHighlighter itemHighlighter;
+    [SerializeField] private TMP_Text actionPrompt;
 
     [Header("Inspection Settings")]
     [SerializeField] private float inspectDistance = 1.2f;
     [SerializeField] private float rotationSpeed = 0.2f;
 
-    [SerializeField] private InteractionUI interactionUI;
+    [Header("Carrying Settings")]
+    [SerializeField] private Vector3 carryPosition = new Vector3(0.35f, -0.25f, 0.8f);
 
     private Transform inspectedItem;
     private Transform originalParent;
     private Vector3 originalPosition;
     private Quaternion originalRotation;
+
     private Rigidbody itemRigidbody;
     private bool wasKinematic;
+    private bool wasUsingGravity;
+
+    private Collider[] itemColliders;
+    private bool[] colliderStates;
+
     private bool isInspecting;
+    private bool isCarrying;
+    private bool canCarryItem;
 
     private CursorLockMode previousCursorLock;
     private bool previousCursorVisibility;
 
     public bool IsInspecting => isInspecting;
+    public bool IsCarrying => isCarrying;
+
+    private void Start()
+    {
+        HideActionPrompt();
+    }
 
     public void BeginInspection(Transform item)
     {
-        if (isInspecting || item == null)
+        if (isInspecting || isCarrying || item == null)
             return;
 
         inspectedItem = item;
@@ -37,14 +56,31 @@ public class ItemInspectionController : MonoBehaviour
         originalPosition = item.position;
         originalRotation = item.rotation;
 
+        InspectableItem itemData =
+            item.GetComponent<InspectableItem>();
+
+        canCarryItem = itemData != null && itemData.CanCarry;
+
         itemRigidbody = item.GetComponent<Rigidbody>();
 
         if (itemRigidbody != null)
         {
             wasKinematic = itemRigidbody.isKinematic;
+            wasUsingGravity = itemRigidbody.useGravity;
+
             itemRigidbody.isKinematic = true;
+            itemRigidbody.useGravity = false;
             itemRigidbody.linearVelocity = Vector3.zero;
             itemRigidbody.angularVelocity = Vector3.zero;
+        }
+
+        itemColliders = item.GetComponentsInChildren<Collider>(true);
+        colliderStates = new bool[itemColliders.Length];
+
+        for (int i = 0; i < itemColliders.Length; i++)
+        {
+            colliderStates[i] = itemColliders[i].enabled;
+            itemColliders[i].enabled = false;
         }
 
         previousCursorLock = Cursor.lockState;
@@ -52,6 +88,9 @@ public class ItemInspectionController : MonoBehaviour
 
         if (interactionUI != null)
             interactionUI.Hide();
+
+        if (itemHighlighter != null)
+            itemHighlighter.enabled = false;
 
         isInspecting = true;
 
@@ -61,29 +100,75 @@ public class ItemInspectionController : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
-        item.SetParent(playerCamera, true);
+        item.SetParent(playerCamera, false);
         item.localPosition = new Vector3(0f, 0f, inspectDistance);
         item.localRotation = Quaternion.identity;
+
+        if (canCarryItem)
+        {
+            ShowActionPrompt(
+                "ЛКМ Взяти  ПКМ Покласти"
+            );
+        }
+        else
+        {
+            HideActionPrompt();
+        }
     }
 
     private void Update()
     {
-        if (!isInspecting || inspectedItem == null)
-            return;
-
-        RotateItem();
-
-        if (Keyboard.current != null &&
-            (Keyboard.current.eKey.wasPressedThisFrame ||
-             Keyboard.current.escapeKey.wasPressedThisFrame))
+        if (isInspecting)
         {
-            EndInspection();
+            if (inspectedItem == null)
+            {
+                EndInspection();
+                return;
+            }
+
+            RotateItem();
+
+            if (Mouse.current != null)
+            {
+                if (Mouse.current.leftButton.wasPressedThisFrame)
+                {
+                    TakeItem();
+                    return;
+                }
+
+                if (Mouse.current.rightButton.wasPressedThisFrame)
+                {
+                    ReturnItemToOriginalPlace();
+                    return;
+                }
+            }
+
+            if (Keyboard.current != null &&
+                (Keyboard.current.eKey.wasPressedThisFrame ||
+                 Keyboard.current.escapeKey.wasPressedThisFrame))
+            {
+                EndInspection();
+            }
+        }
+        else if (isCarrying)
+        {
+            if (inspectedItem == null)
+            {
+                FinishInteraction();
+                return;
+            }
+
+            if (Mouse.current != null &&
+                Mouse.current.rightButton.wasPressedThisFrame)
+            {
+                DropItem();
+            }
         }
     }
 
     private void RotateItem()
     {
-        if (Mouse.current == null)
+        if (Mouse.current == null || inspectedItem == null)
             return;
 
         Vector2 mouseDelta = Mouse.current.delta.ReadValue();
@@ -101,33 +186,134 @@ public class ItemInspectionController : MonoBehaviour
         );
     }
 
+    private void TakeItem()
+    {
+        if (!canCarryItem || inspectedItem == null)
+            return;
+
+        isInspecting = false;
+        isCarrying = true;
+
+        inspectedItem.SetParent(playerCamera, false);
+        inspectedItem.localPosition = carryPosition;
+        inspectedItem.localRotation = Quaternion.identity;
+
+        if (playerController != null)
+            playerController.enabled = true;
+
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+
+        ShowActionPrompt("ПКМ Покласти");
+    }
+
+    private void ReturnItemToOriginalPlace()
+    {
+        if (inspectedItem == null)
+        {
+            EndInspection();
+            return;
+        }
+
+        inspectedItem.SetParent(originalParent, true);
+        inspectedItem.SetPositionAndRotation(
+            originalPosition,
+            originalRotation
+        );
+
+        RestorePhysicsAndColliders();
+        FinishInteraction();
+    }
+
+    private void DropItem()
+    {
+        if (inspectedItem == null)
+        {
+            FinishInteraction();
+            return;
+        }
+
+        Transform item = inspectedItem;
+
+        item.SetParent(null, true);
+
+        item.position =
+            playerCamera.position +
+            playerCamera.forward * 0.8f -
+            playerCamera.up * 0.2f;
+
+        RestorePhysicsAndColliders();
+
+        if (itemRigidbody != null)
+        {
+            itemRigidbody.linearVelocity = Vector3.zero;
+            itemRigidbody.angularVelocity = Vector3.zero;
+        }
+
+        FinishInteraction();
+    }
+
     public void EndInspection()
     {
         if (!isInspecting)
             return;
 
-        if (inspectedItem != null)
-        {
-            inspectedItem.SetParent(originalParent, true);
-            inspectedItem.SetPositionAndRotation(
-                originalPosition,
-                originalRotation
-            );
-        }
+        ReturnItemToOriginalPlace();
+    }
 
+    private void RestorePhysicsAndColliders()
+    {
         if (itemRigidbody != null)
         {
             itemRigidbody.isKinematic = wasKinematic;
+            itemRigidbody.useGravity = wasUsingGravity;
         }
 
+        if (itemColliders != null)
+        {
+            for (int i = 0; i < itemColliders.Length; i++)
+            {
+                if (itemColliders[i] != null)
+                    itemColliders[i].enabled = colliderStates[i];
+            }
+        }
+    }
+
+    private void FinishInteraction()
+    {
         inspectedItem = null;
         itemRigidbody = null;
-        isInspecting = false;
+        itemColliders = null;
+        colliderStates = null;
 
-        Cursor.lockState = previousCursorLock;
-        Cursor.visible = previousCursorVisibility;
+        isInspecting = false;
+        isCarrying = false;
+        canCarryItem = false;
 
         if (playerController != null)
             playerController.enabled = true;
+
+        if (itemHighlighter != null)
+            itemHighlighter.enabled = true;
+
+        HideActionPrompt();
+
+        Cursor.lockState = previousCursorLock;
+        Cursor.visible = previousCursorVisibility;
+    }
+
+    private void ShowActionPrompt(string message)
+    {
+        if (actionPrompt == null)
+            return;
+
+        actionPrompt.text = message;
+        actionPrompt.gameObject.SetActive(true);
+    }
+
+    private void HideActionPrompt()
+    {
+        if (actionPrompt != null)
+            actionPrompt.gameObject.SetActive(false);
     }
 }

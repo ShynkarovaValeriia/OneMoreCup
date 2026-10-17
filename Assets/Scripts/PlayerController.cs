@@ -108,8 +108,13 @@ public class PlayerController : MonoBehaviour
                     interactionUI.Show("Натисніть E");
                 }
 
-                if (interactAction != null &&
-                    interactAction.WasPressedThisFrame())
+                bool pressedE = interactAction != null &&
+                interactAction.WasPressedThisFrame();
+
+                bool pressedLeftMouse = Mouse.current != null &&
+                                        Mouse.current.leftButton.wasPressedThisFrame;
+
+                if (pressedE || pressedLeftMouse)
                 {
                     interactable.Interact();
                 }
