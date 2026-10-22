@@ -16,6 +16,13 @@ public class WakeUpIntro : MonoBehaviour
     [SerializeField] private GameObject subtitleBackground;
     [SerializeField] private string wakeUpLine = "Треба зробити чай...";
 
+    [Header("Tea Reminder")]
+    [SerializeField] private float reminderInterval = 30f;
+    [SerializeField] private float reminderDuration = 3f;
+
+    private bool teaTaskCompleted = false;
+    private Coroutine reminderCoroutine;
+
     [Header("Cup")]
     [SerializeField] private Transform cup;
     [SerializeField] private Rigidbody cupRigidbody;
@@ -144,6 +151,8 @@ public class WakeUpIntro : MonoBehaviour
 
         blackScreen.blocksRaycasts = false;
         playerController.enabled = true;
+
+        reminderCoroutine = StartCoroutine(TeaReminderRoutine());
     }
 
     private IEnumerator FadeScreen(float from, float to)
@@ -303,5 +312,71 @@ public class WakeUpIntro : MonoBehaviour
         {
             cupCollider.enabled = originalCupColliderEnabled;
         }
+    }
+
+    private IEnumerator TeaReminderRoutine()
+    {
+        while (!teaTaskCompleted)
+        {
+            // Ждём 30 секунд после предыдущего напоминания.
+            yield return new WaitForSeconds(reminderInterval);
+
+            if (teaTaskCompleted)
+            {
+                yield break;
+            }
+
+            // Показываем мысль героини.
+            subtitleText.text = wakeUpLine;
+            subtitleText.gameObject.SetActive(true);
+
+            if (subtitleBackground != null)
+            {
+                subtitleBackground.SetActive(true);
+            }
+
+            // Оставляем фразу на экране на несколько секунд.
+            yield return new WaitForSeconds(reminderDuration);
+
+            if (teaTaskCompleted)
+            {
+                yield break;
+            }
+
+            // Скрываем субтитры до следующего напоминания.
+            subtitleText.gameObject.SetActive(false);
+
+            if (subtitleBackground != null)
+            {
+                subtitleBackground.SetActive(false);
+            }
+        }
+    }
+
+    public void CompleteTeaTask()
+    {
+        if (teaTaskCompleted)
+        {
+            return;
+        }
+
+        teaTaskCompleted = true;
+
+        // Останавливаем дальнейшие напоминания.
+        if (reminderCoroutine != null)
+        {
+            StopCoroutine(reminderCoroutine);
+            reminderCoroutine = null;
+        }
+
+        // Убираем фразу, если она сейчас отображается.
+        subtitleText.gameObject.SetActive(false);
+
+        if (subtitleBackground != null)
+        {
+            subtitleBackground.SetActive(false);
+        }
+
+        Debug.Log("Задание выполнено: чайник включён!");
     }
 }

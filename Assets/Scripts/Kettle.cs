@@ -8,6 +8,12 @@ public class Kettle : MonoBehaviour, Interaction
     [Header("Kettle Light")]
     [SerializeField] private Light kettleLight;
 
+    [Header("Story")]
+    [SerializeField] private WakeUpIntro wakeUpIntro;
+
+    [Header("Power Outage")]
+    [SerializeField] private PowerOutage powerOutage;
+
     private bool isBoiling = false;
 
     private void Awake()
@@ -37,6 +43,11 @@ public class Kettle : MonoBehaviour, Interaction
 
         isBoiling = true;
 
+        if (wakeUpIntro != null)
+        {
+            wakeUpIntro.CompleteTeaTask();
+        }
+
         // Включаем пар.
         if (steam != null)
         {
@@ -47,6 +58,12 @@ public class Kettle : MonoBehaviour, Interaction
         if (kettleLight != null)
         {
             kettleLight.enabled = true;
+        }
+
+        // Включаем мигание света.
+        if (powerOutage != null)
+        {
+            powerOutage.StartPowerOutage();
         }
 
         Debug.Log("Чайник включён: свет и пар активированы!");
