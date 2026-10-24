@@ -11,17 +11,28 @@ public class ItemInspectionController : MonoBehaviour
     [SerializeField] private InspectableItemHighlighter itemHighlighter;
     [SerializeField] private TMP_Text actionPrompt;
 
+    [Header("Story")]
+    [SerializeField] private WakeUpIntro wakeUpIntro;
+    [SerializeField] private PowerOutage powerOutage;
+
     [Header("Inspection Settings")]
     [SerializeField] private float inspectDistance = 1.2f;
     [SerializeField] private float rotationSpeed = 0.2f;
 
     [Header("Carrying Settings")]
-    [SerializeField] private Vector3 carryPosition = new Vector3(0.35f, -0.25f, 0.8f);
+    [SerializeField]
+    private Vector3 carryPosition =
+        new Vector3(0.35f, -0.25f, 0.8f);
 
     private Transform inspectedItem;
     private Transform originalParent;
     private Vector3 originalPosition;
     private Quaternion originalRotation;
+
+    private InspectableItem inspectedItemData;
+
+    private GameObject activeCarriedVisual;
+    private bool usingSeparateCarryVisual;
 
     private Rigidbody itemRigidbody;
     private bool wasKinematic;
@@ -56,10 +67,11 @@ public class ItemInspectionController : MonoBehaviour
         originalPosition = item.position;
         originalRotation = item.rotation;
 
-        InspectableItem itemData =
-            item.GetComponent<InspectableItem>();
+        inspectedItemData = item.GetComponent<InspectableItem>();
 
-        canCarryItem = itemData != null && itemData.CanCarry;
+        canCarryItem =
+            inspectedItemData != null &&
+            inspectedItemData.CanCarry;
 
         itemRigidbody = item.GetComponent<Rigidbody>();
 
@@ -106,9 +118,10 @@ public class ItemInspectionController : MonoBehaviour
 
         if (canCarryItem)
         {
-            ShowActionPrompt(
-                "ЛКМ Взяти  ПКМ Покласти"
-            );
+            if (inspectedItemData.CanDrop)
+                ShowActionPrompt("ЛКМ Взяти  ПКМ Покласти");
+            else
+                ShowActionPrompt("ЛКМ Взяти");
         }
         else
         {
@@ -158,7 +171,9 @@ public class ItemInspectionController : MonoBehaviour
                 return;
             }
 
-            if (Mouse.current != null &&
+            if (inspectedItemData != null &&
+                inspectedItemData.CanDrop &&
+                Mouse.current != null &&
                 Mouse.current.rightButton.wasPressedThisFrame)
             {
                 DropItem();
@@ -191,12 +206,61 @@ public class ItemInspectionController : MonoBehaviour
         if (!canCarryItem || inspectedItem == null)
             return;
 
+        GameObject separateVisual =
+            inspectedItemData != null
+                ? inspectedItemData.CarriedVisual
+                : null;
+
         isInspecting = false;
         isCarrying = true;
 
-        inspectedItem.SetParent(playerCamera, false);
-        inspectedItem.localPosition = carryPosition;
-        inspectedItem.localRotation = Quaternion.identity;
+        if (separateVisual != null)
+        {
+            // Возвращаем оригинальный предмет на место.
+            inspectedItem.SetParent(originalParent, true);
+            inspectedItem.SetPositionAndRotation(
+                originalPosition,
+                originalRotation
+            );
+
+            RestorePhysicsAndColliders();
+
+            // Теперь переносим отдельную модель в руке.
+            usingSeparateCarryVisual = true;
+            activeCarriedVisual = separateVisual;
+            inspectedItem = separateVisual.transform;
+
+            itemRigidbody = null;
+            itemColliders = null;
+            colliderStates = null;
+
+            activeCarriedVisual.SetActive(true);
+            inspectedItem.SetParent(playerCamera, false);
+
+            inspectedItem.localPosition =
+                inspectedItemData.CarriedPosition;
+
+            inspectedItem.localRotation =
+                Quaternion.Euler(inspectedItemData.CarriedRotation);
+
+            inspectedItem.localScale =
+                inspectedItemData.CarriedScale;
+
+            if (inspectedItemData != null && inspectedItemData.ItemName == "Сірники" && powerOutage != null && powerOutage.IsPowerOff && wakeUpIntro != null)
+            {
+                wakeUpIntro.ShowFuseBoxReminder();
+            }
+        }
+        else
+        {
+            // Обычный предмет, например чашка.
+            usingSeparateCarryVisual = false;
+            activeCarriedVisual = null;
+
+            inspectedItem.SetParent(playerCamera, false);
+            inspectedItem.localPosition = carryPosition;
+            inspectedItem.localRotation = Quaternion.identity;
+        }
 
         if (playerController != null)
             playerController.enabled = true;
@@ -204,7 +268,15 @@ public class ItemInspectionController : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
-        ShowActionPrompt("ПКМ Покласти");
+        if (inspectedItemData != null &&
+            inspectedItemData.CanDrop)
+        {
+            ShowActionPrompt("ПКМ Покласти");
+        }
+        else
+        {
+            HideActionPrompt();
+        }
     }
 
     private void ReturnItemToOriginalPlace()
@@ -232,6 +304,10 @@ public class ItemInspectionController : MonoBehaviour
             FinishInteraction();
             return;
         }
+
+        // Предмет с отдельной моделью не выбрасываем.
+        if (usingSeparateCarryVisual)
+            return;
 
         Transform item = inspectedItem;
 
@@ -281,10 +357,21 @@ public class ItemInspectionController : MonoBehaviour
 
     private void FinishInteraction()
     {
+        if (usingSeparateCarryVisual &&
+            activeCarriedVisual != null)
+        {
+            activeCarriedVisual.SetActive(false);
+            activeCarriedVisual.transform.SetParent(null, true);
+        }
+
         inspectedItem = null;
+        inspectedItemData = null;
         itemRigidbody = null;
         itemColliders = null;
         colliderStates = null;
+
+        activeCarriedVisual = null;
+        usingSeparateCarryVisual = false;
 
         isInspecting = false;
         isCarrying = false;

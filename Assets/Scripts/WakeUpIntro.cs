@@ -379,4 +379,64 @@ public class WakeUpIntro : MonoBehaviour
 
         Debug.Log("Задание выполнено: чайник включён!");
     }
+
+    public void ShowMatchReminder()
+    {
+        StopAllCoroutines();
+        StartCoroutine(ShowMatchReminderRoutine());
+    }
+
+    private System.Collections.IEnumerator ShowMatchReminderRoutine()
+    {
+        subtitleText.text = "Треба знайти сірники..";
+
+        subtitleText.gameObject.SetActive(true);
+
+        if (subtitleBackground != null)
+            subtitleBackground.SetActive(true);
+
+        yield return new WaitForSeconds(4f);
+
+        subtitleText.gameObject.SetActive(false);
+
+        if (subtitleBackground != null)
+            subtitleBackground.SetActive(false);
+    }
+
+    private Coroutine fuseBoxReminderCoroutine;
+    private bool fuseBoxReminderShown = false;
+
+    public void ShowFuseBoxReminder()
+    {
+        if (fuseBoxReminderShown)
+            return;
+
+        fuseBoxReminderShown = true;
+
+        if (fuseBoxReminderCoroutine != null)
+            StopCoroutine(fuseBoxReminderCoroutine);
+
+        fuseBoxReminderCoroutine =
+            StartCoroutine(ShowFuseBoxReminderRoutine());
+    }
+
+    private IEnumerator ShowFuseBoxReminderRoutine()
+    {
+        subtitleText.text =
+            "Треба перевірити електрощиток";
+
+        subtitleText.gameObject.SetActive(true);
+
+        if (subtitleBackground != null)
+            subtitleBackground.SetActive(true);
+
+        yield return new WaitForSeconds(4f);
+
+        subtitleText.gameObject.SetActive(false);
+
+        if (subtitleBackground != null)
+            subtitleBackground.SetActive(false);
+
+        fuseBoxReminderCoroutine = null;
+    }
 }

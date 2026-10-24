@@ -6,19 +6,29 @@ public class PowerOutage : MonoBehaviour
     [Header("Apartment Lights")]
     [SerializeField] private Light[] apartmentLights;
 
-    [Header("Timing")]
+    [Header("Power Outage Timing")]
     [SerializeField] private float delayBeforeFlicker = 3f;
     [SerializeField] private float flickerDuration = 8f;
 
+    [Header("Power Restoration Timing")]
+    [SerializeField] private float restorationDuration = 6f;
+    [SerializeField] private float restorationStartInterval = 0.15f;
+    [SerializeField] private float restorationEndInterval = 1.0f;
+
+    [Header("Story")]
+    [SerializeField] private WakeUpIntro wakeUpIntro;
+
     private bool outageStarted = false;
+    private bool restorationStarted = false;
+
+    public bool IsPowerOff { get; private set; } = false;
+    public bool IsPowerRestoring { get; private set; } = false;
+    public bool IsPowerRestored { get; private set; } = false;
 
     public void StartPowerOutage()
     {
-        // Не запускаем аварию повторно.
-        if (outageStarted)
-        {
+        if (outageStarted || IsPowerRestored)
             return;
-        }
 
         outageStarted = true;
         StartCoroutine(FlickerLights());
@@ -26,49 +36,98 @@ public class PowerOutage : MonoBehaviour
 
     private IEnumerator FlickerLights()
     {
-        // Небольшая задержка после включения чайника.
         yield return new WaitForSeconds(delayBeforeFlicker);
 
         float elapsed = 0f;
 
-        // Свет начинает мигать всё быстрее.
         while (elapsed < flickerDuration)
         {
             float progress = elapsed / flickerDuration;
-
-            // Постепенно сокращаем длительность мигания.
             float interval = Mathf.Lerp(0.8f, 0.12f, progress);
 
-            // Все лампы гаснут одновременно.
             SetApartmentLights(false);
             yield return new WaitForSeconds(interval * 0.5f);
 
-            // Затем снова включаются.
             SetApartmentLights(true);
             yield return new WaitForSeconds(interval * 0.5f);
 
             elapsed += interval;
         }
 
-        // Финальное отключение электричества.
         SetApartmentLights(false);
 
+        IsPowerOff = true;
+
+        StartCoroutine(ShowMatchReminderAfterDelay());
+
         Debug.Log("Авария электричества: свет во всей квартире отключён!");
+    }
+
+    private IEnumerator ShowMatchReminderAfterDelay()
+    {
+        yield return new WaitForSeconds(2f);
+
+        if (wakeUpIntro != null)
+            wakeUpIntro.ShowMatchReminder();
+    }
+
+    public void RestorePower()
+    {
+        // Восстанавливать можно только после отключения.
+        if (!IsPowerOff || restorationStarted || IsPowerRestored)
+            return;
+
+        restorationStarted = true;
+        StartCoroutine(RestorePowerRoutine());
+    }
+
+    private IEnumerator RestorePowerRoutine()
+    {
+        IsPowerRestoring = true;
+
+        Debug.Log("Началось восстановление электричества!");
+
+        float elapsed = 0f;
+
+        while (elapsed < restorationDuration)
+        {
+            float progress = elapsed / restorationDuration;
+
+            // Мигание начинается быстро и постепенно замедляется.
+            float interval = Mathf.Lerp(
+                restorationStartInterval,
+                restorationEndInterval,
+                progress
+            );
+
+            SetApartmentLights(true);
+            yield return new WaitForSeconds(interval);
+
+            SetApartmentLights(false);
+            yield return new WaitForSeconds(interval * 0.5f);
+
+            elapsed += interval * 1.5f;
+        }
+
+        // Финальное состояние: свет остаётся включённым.
+        SetApartmentLights(true);
+
+        IsPowerOff = false;
+        IsPowerRestoring = false;
+        IsPowerRestored = true;
+
+        Debug.Log("Электричество восстановлено!");
     }
 
     private void SetApartmentLights(bool state)
     {
         if (apartmentLights == null)
-        {
             return;
-        }
 
         foreach (Light apartmentLight in apartmentLights)
         {
             if (apartmentLight != null)
-            {
                 apartmentLight.enabled = state;
-            }
         }
     }
 }

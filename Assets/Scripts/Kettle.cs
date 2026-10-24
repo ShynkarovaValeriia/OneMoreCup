@@ -16,6 +16,10 @@ public class Kettle : MonoBehaviour, Interaction
 
     private bool isBoiling = false;
 
+    [SerializeField] private Collider interactionCollider;
+
+    private bool powerOutageHandled = false;
+
     private void Awake()
     {
         // При запуске игры чайник выключен.
@@ -67,5 +71,43 @@ public class Kettle : MonoBehaviour, Interaction
         }
 
         Debug.Log("Чайник включён: свет и пар активированы!");
+    }
+
+    private void Update()
+    {
+        if (powerOutage == null || !powerOutage.IsPowerOff)
+        {
+            return;
+        }
+
+        if (powerOutageHandled)
+        {
+            return;
+        }
+
+        powerOutageHandled = true;
+
+        // Останавливаем пар и удаляем оставшиеся частицы.
+        if (steam != null)
+        {
+            steam.Stop(
+                true,
+                ParticleSystemStopBehavior.StopEmittingAndClear
+            );
+        }
+
+        // Выключаем свет чайника.
+        if (kettleLight != null)
+        {
+            kettleLight.enabled = false;
+        }
+
+        // Убираем возможность наводиться на чайник.
+        if (interactionCollider != null)
+        {
+            interactionCollider.enabled = false;
+        }
+
+        Debug.Log("Чайник отключился из-за аварии электричества.");
     }
 }

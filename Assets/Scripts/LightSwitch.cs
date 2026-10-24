@@ -5,6 +5,9 @@ public class LightSwitch : MonoBehaviour, Interaction
     [Header("Lights controlled by this switch")]
     [SerializeField] private Light[] roomLights;
 
+    [Header("Power")]
+    [SerializeField] private PowerOutage powerOutage;
+
     private bool isOn = true;
 
     private void Start()
@@ -18,6 +21,12 @@ public class LightSwitch : MonoBehaviour, Interaction
 
     public void Interact()
     {
+        // Если электричество отключено, выключатель не работает.
+        if (powerOutage != null && powerOutage.IsPowerOff)
+        {
+            return;
+        }
+
         if (roomLights == null || roomLights.Length == 0)
         {
             Debug.LogWarning("LightSwitch: No lights assigned!", this);
