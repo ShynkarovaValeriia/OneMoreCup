@@ -18,6 +18,9 @@ public class PowerOutage : MonoBehaviour
     [Header("Story")]
     [SerializeField] private WakeUpIntro wakeUpIntro;
 
+    [Header("Held Items")]
+    [SerializeField] private ItemInspectionController itemInspectionController;
+
     private bool outageStarted = false;
     private bool restorationStarted = false;
 
@@ -115,6 +118,11 @@ public class PowerOutage : MonoBehaviour
         IsPowerOff = false;
         IsPowerRestoring = false;
         IsPowerRestored = true;
+
+        if (itemInspectionController != null)
+        {
+            itemInspectionController.ExtinguishCarriedMatch();
+        }
 
         Debug.Log("Электричество восстановлено!");
     }

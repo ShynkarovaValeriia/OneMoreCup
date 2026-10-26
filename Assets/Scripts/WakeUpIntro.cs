@@ -388,7 +388,7 @@ public class WakeUpIntro : MonoBehaviour
 
     private System.Collections.IEnumerator ShowMatchReminderRoutine()
     {
-        subtitleText.text = "Треба знайти сірники..";
+        subtitleText.text = "Десь лежали сірники..";
 
         subtitleText.gameObject.SetActive(true);
 
@@ -422,8 +422,7 @@ public class WakeUpIntro : MonoBehaviour
 
     private IEnumerator ShowFuseBoxReminderRoutine()
     {
-        subtitleText.text =
-            "Треба перевірити електрощиток";
+        subtitleText.text = "Потрібно перевірити електрощиток";
 
         subtitleText.gameObject.SetActive(true);
 

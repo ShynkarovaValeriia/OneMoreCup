@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using TMPro;
+using System.Collections;
 
 public class ItemInspectionController : MonoBehaviour
 {
@@ -50,6 +51,23 @@ public class ItemInspectionController : MonoBehaviour
 
     public bool IsInspecting => isInspecting;
     public bool IsCarrying => isCarrying;
+
+    public bool IsHoldingCup =>
+        isCarrying &&
+        inspectedItemData != null &&
+        inspectedItemData.ItemName == "Чашка";
+
+    public Transform HeldCupTransform =>
+        IsHoldingCup ? inspectedItem : null;
+
+    [Header("Match Burnout")]
+    [SerializeField] private float matchBurnOutDuration = 0.2f;
+
+    private Coroutine extinguishCoroutine;
+
+    [SerializeField] private Transform matchBurningVisual;
+
+    private bool isCutscenePlaying = false;
 
     private void Start()
     {
@@ -131,6 +149,9 @@ public class ItemInspectionController : MonoBehaviour
 
     private void Update()
     {
+        if (isCutscenePlaying)
+            return;
+
         if (isInspecting)
         {
             if (inspectedItem == null)
@@ -402,5 +423,148 @@ public class ItemInspectionController : MonoBehaviour
     {
         if (actionPrompt != null)
             actionPrompt.gameObject.SetActive(false);
+    }
+
+    public void ExtinguishCarriedMatch()
+    {
+        // Проверяем, что игрок держит именно спичку.
+        if (inspectedItemData == null ||
+            inspectedItemData.ItemName != "Сірники" ||
+            !isCarrying ||
+            !usingSeparateCarryVisual ||
+            activeCarriedVisual == null)
+        {
+            return;
+        }
+
+        // Не запускаем сгорание повторно.
+        if (extinguishCoroutine != null)
+            return;
+
+        extinguishCoroutine =
+            StartCoroutine(BurnOutMatchRoutine());
+    }
+
+    private IEnumerator BurnOutMatchRoutine()
+    {
+        GameObject match = activeCarriedVisual;
+        Transform matchTransform = match.transform;
+
+        // Запоминаем исходный размер спички.
+        Vector3 initialScale = matchBurningVisual != null
+            ? matchBurningVisual.localScale
+            : matchTransform.localScale;
+
+        // Находим источник света внутри модели спички.
+        Light matchLight = match.GetComponentInChildren<Light>(true);
+
+        float initialIntensity = 0f;
+        float initialRange = 0f;
+
+        if (matchLight != null)
+        {
+            initialIntensity = matchLight.intensity;
+            initialRange = matchLight.range;
+        }
+
+        float elapsed = 0f;
+        float duration = Mathf.Max(0.1f, matchBurnOutDuration);
+
+        // Постепенно уменьшаем спичку и её свечение.
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+
+            float progress = Mathf.Clamp01(elapsed / duration);
+
+            if (matchBurningVisual != null)
+            {
+                Vector3 scale = matchBurningVisual.localScale;
+
+                // Спичка укорачивается сверху вниз,
+                // а основание остаётся на месте.
+                scale.y = Mathf.Lerp(
+                    initialScale.y,
+                    0f,
+                    progress
+                );
+
+                matchBurningVisual.localScale = scale;
+            }
+
+            // Постепенно гасим свет.
+            if (matchLight != null)
+            {
+                matchLight.intensity =
+                    Mathf.Lerp(initialIntensity, 0f, progress);
+
+                matchLight.range =
+                    Mathf.Lerp(initialRange, 0f, progress);
+            }
+
+            yield return null;
+        }
+
+        // Убираем спичку после завершения анимации.
+        if (match != null)
+        {
+            match.SetActive(false);
+            match.transform.SetParent(null, true);
+
+            // Возвращаем исходный размер для возможного повторного использования.
+            match.transform.localScale = initialScale;
+        }
+
+        // Полностью освобождаем состояние удержания предмета.
+        activeCarriedVisual = null;
+        inspectedItem = null;
+        inspectedItemData = null;
+
+        itemRigidbody = null;
+        itemColliders = null;
+        colliderStates = null;
+
+        usingSeparateCarryVisual = false;
+        isInspecting = false;
+        isCarrying = false;
+        canCarryItem = false;
+
+        extinguishCoroutine = null;
+
+        if (playerController != null)
+            playerController.enabled = true;
+
+        if (itemHighlighter != null)
+            itemHighlighter.enabled = true;
+
+        if (matchBurningVisual != null)
+        {
+            matchBurningVisual.localScale = initialScale;
+        }
+
+        HideActionPrompt();
+
+        Debug.Log("Спичка догорела и исчезла.");
+    }
+
+    public void SetCutscenePlaying(bool playing)
+    {
+        isCutscenePlaying = playing;
+
+        if (playerController != null)
+            playerController.enabled = !playing;
+
+        if (playing)
+        {
+            if (interactionUI != null)
+                interactionUI.Hide();
+
+            HideActionPrompt();
+        }
+        else
+        {
+            if (itemHighlighter != null)
+                itemHighlighter.enabled = true;
+        }
     }
 }
