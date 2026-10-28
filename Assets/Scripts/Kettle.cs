@@ -35,12 +35,16 @@ public class Kettle : MonoBehaviour, Interaction
     private bool teaHasBeenPoured = false;
     private bool isPouring = false;
 
+    public bool TeaHasBeenPoured => teaHasBeenPoured;
+
     [Header("Pouring Cutscene")]
     [SerializeField] private Transform kettleVisual;
     [SerializeField] private Transform pouringTarget;
 
     [SerializeField] private float kettleMoveDuration = 0.8f;
     [SerializeField] private float teaPourDuration = 2f;
+
+    private ParticleSystem teaStreamParticles;
 
     private void Awake()
     {
@@ -59,8 +63,26 @@ public class Kettle : MonoBehaviour, Interaction
         }
     }
 
+    private void Start()
+    {
+        if (teaPourEffect != null)
+        {
+            teaStreamParticles = teaPourEffect;
+        }
+
+        if (teaStreamParticles != null)
+        {
+            teaStreamParticles.Stop(
+                true,
+                ParticleSystemStopBehavior.StopEmittingAndClear
+            );
+        }
+    }
+
     public void Interact()
     {
+        // Если чайник работает, электричество восстановлено,
+        // а игрок держит чашку — начинаем кат-сцену наливания.
         if (isBoiling &&
             itemInspectionController != null &&
             itemInspectionController.IsHoldingCup &&
@@ -70,18 +92,6 @@ public class Kettle : MonoBehaviour, Interaction
             powerOutage.IsPowerRestored)
         {
             StartCoroutine(PourTeaCutscene());
-            return;
-        }
-
-        // Если игрок держит чашку, чайник уже работает,
-        // а чай ещё не налит — начинаем наливание.
-        if (isBoiling &&
-            itemInspectionController != null &&
-            itemInspectionController.IsHoldingCup &&
-            !teaHasBeenPoured &&
-            !isPouring)
-        {
-            StartCoroutine(PourTea());
             return;
         }
 
@@ -188,42 +198,6 @@ public class Kettle : MonoBehaviour, Interaction
         }
     }
 
-    private System.Collections.IEnumerator PourTea()
-    {
-        isPouring = true;
-
-        Debug.Log("Героиня наливает чай в чашку.");
-
-        // Включаем эффект струи, если он назначен.
-        if (teaPourEffect != null)
-        {
-            teaPourEffect.Play();
-        }
-
-        // Ждём, пока чай наливается.
-        yield return new WaitForSeconds(pourDuration);
-
-        // Выключаем эффект струи.
-        if (teaPourEffect != null)
-        {
-            teaPourEffect.Stop(
-                true,
-                ParticleSystemStopBehavior.StopEmitting
-            );
-        }
-
-        // Показываем чай внутри чашки.
-        if (cupTeaVisual != null)
-        {
-            cupTeaVisual.SetActive(true);
-        }
-
-        teaHasBeenPoured = true;
-        isPouring = false;
-
-        Debug.Log("Чай налит. Можно продолжать игру.");
-    }
-
     private System.Collections.IEnumerator PourTeaCutscene()
     {
         if (kettleVisual == null ||
@@ -246,7 +220,25 @@ public class Kettle : MonoBehaviour, Interaction
         Vector3 originalPosition = kettleVisual.position;
         Quaternion originalRotation = kettleVisual.rotation;
 
-        // Блокируем управление игроком.
+        // Сразу выключаем кипение.
+        isBoiling = false;
+
+        // Выключаем пар.
+        if (steam != null)
+        {
+            steam.Stop(
+                true,
+                ParticleSystemStopBehavior.StopEmittingAndClear
+            );
+        }
+
+        // Выключаем подсветку чайника.
+        if (kettleLight != null)
+        {
+            kettleLight.enabled = false;
+        }
+
+        // Блокируем управление игроком на время кат-сцены.
         itemInspectionController.SetCutscenePlaying(true);
 
         // 1. Поднимаем чайник и перемещаем к чашке.
@@ -258,15 +250,18 @@ public class Kettle : MonoBehaviour, Interaction
         );
 
         // 2. Включаем струю чая.
-        if (teaPourEffect != null)
-            teaPourEffect.Play();
+        if (teaStreamParticles != null)
+        {
+            teaStreamParticles.Clear();
+            teaStreamParticles.Play();
+        }
 
         yield return new WaitForSeconds(teaPourDuration);
 
-        // 3. Останавливаем струю.
-        if (teaPourEffect != null)
+        // 3. Останавливаем появление новых частиц чая.
+        if (teaStreamParticles != null)
         {
-            teaPourEffect.Stop(
+            teaStreamParticles.Stop(
                 true,
                 ParticleSystemStopBehavior.StopEmitting
             );
