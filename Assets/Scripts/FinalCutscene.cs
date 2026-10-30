@@ -1,4 +1,4 @@
-
+using TMPro;
 using System.Collections;
 using UnityEngine;
 
@@ -29,6 +29,22 @@ public class FinalCutscene : MonoBehaviour, Interaction
 
     private bool finaleStarted = false;
 
+    [SerializeField] private WakeUpIntro wakeUpIntro;
+
+    [Header("Sofa Interaction")]
+    [SerializeField] private Collider sofaInteractionCollider;
+
+    private bool sofaUnlocked = false;
+
+    [Header("Ending")]
+    [SerializeField] private TMP_Text endingText;
+    [SerializeField] private GameObject endingBackground;
+    [SerializeField] private string endingLine = "Ну нарешті…";
+
+    [SerializeField] private float pauseBeforeEndingLine = 1.5f;
+    [SerializeField] private float endingTextDuration = 4f;
+    [SerializeField] private float endingFadeDuration = 1f;
+
     public void Interact()
     {
         if (finaleStarted)
@@ -57,6 +73,11 @@ public class FinalCutscene : MonoBehaviour, Interaction
                 this
             );
             return;
+        }
+
+        if (wakeUpIntro != null)
+        {
+            wakeUpIntro.CompleteRestTask();
         }
 
         StartCoroutine(PlayFinalCutscene());
@@ -170,6 +191,31 @@ public class FinalCutscene : MonoBehaviour, Interaction
         blackScreen.alpha = 1f;
         blackScreen.blocksRaycasts = true;
 
+        yield return new WaitForSeconds(pauseBeforeEndingLine);
+
+        if (endingText != null)
+        {
+            endingText.text = endingLine;
+            endingText.gameObject.SetActive(true);
+        }
+
+        if (endingBackground != null)
+        {
+            endingBackground.SetActive(true);
+        }
+
+        yield return new WaitForSeconds(endingTextDuration);
+
+        if (endingText != null)
+        {
+            endingText.gameObject.SetActive(false);
+        }
+
+        if (endingBackground != null)
+        {
+            endingBackground.SetActive(false);
+        }
+
         // Оставляем игру в завершённом состоянии.
         // Управление намеренно не возвращаем.
         Debug.Log("Финальная кат-сцена завершена.");
@@ -206,5 +252,31 @@ public class FinalCutscene : MonoBehaviour, Interaction
     {
         value = Mathf.Clamp01(value);
         return value * value * (3f - 2f * value);
+    }
+
+    public void UnlockSofaInteraction()
+    {
+        sofaUnlocked = true;
+        UpdateSofaInteraction();
+    }
+
+    private void UpdateSofaInteraction()
+    {
+        if (sofaInteractionCollider == null)
+            return;
+
+        bool canInteract =
+            sofaUnlocked &&
+            kettle != null &&
+            kettle.TeaHasBeenPoured &&
+            itemInspectionController != null &&
+            itemInspectionController.IsHoldingCup;
+
+        sofaInteractionCollider.enabled = canInteract;
+    }
+
+    private void Update()
+    {
+        UpdateSofaInteraction();
     }
 }

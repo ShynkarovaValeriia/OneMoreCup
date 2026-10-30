@@ -283,8 +283,12 @@ public class Kettle : MonoBehaviour, Interaction
 
         // 6. Возвращаем управление игроку.
         itemInspectionController.SetCutscenePlaying(false);
-
         isPouring = false;
+
+        if (wakeUpIntro != null)
+        {
+            wakeUpIntro.StartRestReminders();
+        }
 
         Debug.Log("Кат-сцена завершена: чай налит.");
     }
