@@ -45,6 +45,9 @@ public class FinalCutscene : MonoBehaviour, Interaction
     [SerializeField] private float endingTextDuration = 4f;
     [SerializeField] private float endingFadeDuration = 1f;
 
+    [Header("UI")]
+    [SerializeField] private GameObject crosshair;
+
     public void Interact()
     {
         if (finaleStarted)
@@ -191,7 +194,13 @@ public class FinalCutscene : MonoBehaviour, Interaction
         blackScreen.alpha = 1f;
         blackScreen.blocksRaycasts = true;
 
+        if (crosshair != null)
+        {
+            crosshair.SetActive(false);
+        }
+
         yield return new WaitForSeconds(pauseBeforeEndingLine);
+
 
         if (endingText != null)
         {
