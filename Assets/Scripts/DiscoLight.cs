@@ -47,15 +47,10 @@ public class DiscoLight : MonoBehaviour
             }
             else
             {
-                targetIntensity = Random.Range(
-                    minIntensity,
-                    maxIntensity
-                );
+                targetIntensity = Random.Range(minIntensity, maxIntensity);
             }
 
-            nextBeat = Random.Range(
-                minBeatInterval,
-                maxBeatInterval
+            nextBeat = Random.Range(minBeatInterval, maxBeatInterval
             );
         }
 
@@ -64,11 +59,7 @@ public class DiscoLight : MonoBehaviour
             if (discoLight == null)
                 continue;
 
-            discoLight.intensity = Mathf.Lerp(
-                discoLight.intensity,
-                targetIntensity,
-                smoothSpeed * Time.deltaTime
-            );
+            discoLight.intensity = Mathf.Lerp(discoLight.intensity, targetIntensity, smoothSpeed * Time.deltaTime);
         }
     }
 }

@@ -71,7 +71,7 @@ public class InspectableItem : MonoBehaviour, Interaction
         else
         {
             Debug.LogWarning(
-                "InspectableItem: Inspection Controller is not assigned!",
+                "Нічого не знайдено",
                 this
             );
         }

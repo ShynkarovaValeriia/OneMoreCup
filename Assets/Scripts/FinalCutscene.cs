@@ -55,14 +55,14 @@ public class FinalCutscene : MonoBehaviour, Interaction
 
         if (kettle == null || !kettle.TeaHasBeenPoured)
         {
-            Debug.Log("Сначала нужно налить чай.");
+            Debug.Log("Потрібно налити чай");
             return;
         }
 
         if (itemInspectionController == null ||
             !itemInspectionController.IsHoldingCup)
         {
-            Debug.Log("Для финала героиня должна держать чашку.");
+            Debug.Log("Потрібно тримати чашку");
             return;
         }
 
@@ -71,16 +71,16 @@ public class FinalCutscene : MonoBehaviour, Interaction
             sitPoint == null ||
             blackScreen == null)
         {
-            Debug.LogWarning(
-                "FinalCutscene: проверь ссылки в Inspector.",
-                this
-            );
             return;
         }
 
         if (wakeUpIntro != null)
         {
-            wakeUpIntro.CompleteRestTask();
+            if (wakeUpIntro != null)
+            {
+                wakeUpIntro.StopObjectiveReminder();
+                wakeUpIntro.CompleteRestTask();
+            }
         }
 
         StartCoroutine(PlayFinalCutscene());
@@ -90,7 +90,6 @@ public class FinalCutscene : MonoBehaviour, Interaction
     {
         finaleStarted = true;
 
-        // Запоминаем исходные положения.
         Vector3 startPlayerPosition = playerController.transform.position;
         Quaternion startPlayerRotation = playerController.transform.rotation;
 
@@ -103,12 +102,9 @@ public class FinalCutscene : MonoBehaviour, Interaction
         Vector3 targetCameraPosition = startCameraPosition;
         targetCameraPosition.y = seatedCameraHeight;
 
-        // Блокируем управление и взаимодействия.
         itemInspectionController.SetCutscenePlaying(true);
         playerController.enabled = false;
 
-        // Останавливаем физическое движение игрока,
-        // чтобы Rigidbody не мешал анимации посадки.
         bool hadRigidbody = playerRigidbody != null;
         bool wasKinematic = false;
 
@@ -120,13 +116,10 @@ public class FinalCutscene : MonoBehaviour, Interaction
             playerRigidbody.isKinematic = true;
         }
 
-        // Экран должен быть видимым до начала финала.
         blackScreen.gameObject.SetActive(true);
         blackScreen.alpha = 0f;
         blackScreen.blocksRaycasts = true;
 
-        // 1. Героиня перемещается к точке посадки,
-        // поворачивается и опускает камеру.
         float timer = 0f;
 
         while (timer < sitDuration)
@@ -134,23 +127,11 @@ public class FinalCutscene : MonoBehaviour, Interaction
             timer += Time.deltaTime;
             float t = Smooth(timer / sitDuration);
 
-            playerController.transform.position = Vector3.Lerp(
-                startPlayerPosition,
-                targetPlayerPosition,
-                t
-            );
+            playerController.transform.position = Vector3.Lerp(startPlayerPosition, targetPlayerPosition, t);
 
-            playerController.transform.rotation = Quaternion.Slerp(
-                startPlayerRotation,
-                targetPlayerRotation,
-                t
-            );
+            playerController.transform.rotation = Quaternion.Slerp(startPlayerRotation, targetPlayerRotation, t);
 
-            playerCamera.localPosition = Vector3.Lerp(
-                startCameraPosition,
-                targetCameraPosition,
-                t
-            );
+            playerCamera.localPosition = Vector3.Lerp(startCameraPosition, targetCameraPosition, t);
 
             yield return null;
         }
@@ -159,7 +140,6 @@ public class FinalCutscene : MonoBehaviour, Interaction
         playerController.transform.rotation = targetPlayerRotation;
         playerCamera.localPosition = targetCameraPosition;
 
-        // 2. Героиня смотрит вниз на чашку.
         Quaternion cupLookRotation =
             startCameraRotation *
             Quaternion.Euler(cameraLookDownAngle, 0f, 0f);
@@ -171,11 +151,8 @@ public class FinalCutscene : MonoBehaviour, Interaction
             lookAtCupDuration
         );
 
-        // Небольшая пауза — героиня смотрит на чай.
         yield return new WaitForSeconds(pauseBeforeClosingEyes);
 
-        // 3. Глаза постепенно закрываются:
-        // плавно затемняем весь экран.
         float fadeTimer = 0f;
 
         while (fadeTimer < closeEyesDuration)
@@ -225,9 +202,7 @@ public class FinalCutscene : MonoBehaviour, Interaction
             endingBackground.SetActive(false);
         }
 
-        // Оставляем игру в завершённом состоянии.
-        // Управление намеренно не возвращаем.
-        Debug.Log("Финальная кат-сцена завершена.");
+        Debug.Log("КІНЕЦЬ");
     }
 
     private IEnumerator RotateCamera(

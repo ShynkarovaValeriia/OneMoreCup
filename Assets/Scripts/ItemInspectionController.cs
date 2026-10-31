@@ -235,9 +235,21 @@ public class ItemInspectionController : MonoBehaviour
         isInspecting = false;
         isCarrying = true;
 
+        if (inspectedItemData != null &&
+            inspectedItemData.ItemName == "Сірники" &&
+            powerOutage != null &&
+            powerOutage.IsPowerOff)
+        {
+            if (wakeUpIntro != null)
+            {
+                wakeUpIntro.StartObjectiveReminder(
+                    "Перевірю електрощиток. Може, вдасться повернути світло"
+                );
+            }
+        }
+
         if (separateVisual != null)
         {
-            // Возвращаем оригинальный предмет на место.
             inspectedItem.SetParent(originalParent, true);
             inspectedItem.SetPositionAndRotation(
                 originalPosition,
@@ -246,7 +258,6 @@ public class ItemInspectionController : MonoBehaviour
 
             RestorePhysicsAndColliders();
 
-            // Теперь переносим отдельную модель в руке.
             usingSeparateCarryVisual = true;
             activeCarriedVisual = separateVisual;
             inspectedItem = separateVisual.transform;
@@ -266,15 +277,9 @@ public class ItemInspectionController : MonoBehaviour
 
             inspectedItem.localScale =
                 inspectedItemData.CarriedScale;
-
-            if (inspectedItemData != null && inspectedItemData.ItemName == "Сірники" && powerOutage != null && powerOutage.IsPowerOff && wakeUpIntro != null)
-            {
-                wakeUpIntro.ShowFuseBoxReminder();
-            }
         }
         else
         {
-            // Обычный предмет, например чашка.
             usingSeparateCarryVisual = false;
             activeCarriedVisual = null;
 
@@ -326,7 +331,6 @@ public class ItemInspectionController : MonoBehaviour
             return;
         }
 
-        // Предмет с отдельной моделью не выбрасываем.
         if (usingSeparateCarryVisual)
             return;
 
@@ -427,7 +431,6 @@ public class ItemInspectionController : MonoBehaviour
 
     public void ExtinguishCarriedMatch()
     {
-        // Проверяем, что игрок держит именно спичку.
         if (inspectedItemData == null ||
             inspectedItemData.ItemName != "Сірники" ||
             !isCarrying ||
@@ -437,7 +440,6 @@ public class ItemInspectionController : MonoBehaviour
             return;
         }
 
-        // Не запускаем сгорание повторно.
         if (extinguishCoroutine != null)
             return;
 
@@ -450,12 +452,10 @@ public class ItemInspectionController : MonoBehaviour
         GameObject match = activeCarriedVisual;
         Transform matchTransform = match.transform;
 
-        // Запоминаем исходный размер спички.
         Vector3 initialScale = matchBurningVisual != null
             ? matchBurningVisual.localScale
             : matchTransform.localScale;
 
-        // Находим источник света внутри модели спички.
         Light matchLight = match.GetComponentInChildren<Light>(true);
 
         float initialIntensity = 0f;
@@ -470,7 +470,6 @@ public class ItemInspectionController : MonoBehaviour
         float elapsed = 0f;
         float duration = Mathf.Max(0.1f, matchBurnOutDuration);
 
-        // Постепенно уменьшаем спичку и её свечение.
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
@@ -481,8 +480,6 @@ public class ItemInspectionController : MonoBehaviour
             {
                 Vector3 scale = matchBurningVisual.localScale;
 
-                // Спичка укорачивается сверху вниз,
-                // а основание остаётся на месте.
                 scale.y = Mathf.Lerp(
                     initialScale.y,
                     0f,
@@ -492,7 +489,6 @@ public class ItemInspectionController : MonoBehaviour
                 matchBurningVisual.localScale = scale;
             }
 
-            // Постепенно гасим свет.
             if (matchLight != null)
             {
                 matchLight.intensity =
@@ -505,17 +501,14 @@ public class ItemInspectionController : MonoBehaviour
             yield return null;
         }
 
-        // Убираем спичку после завершения анимации.
         if (match != null)
         {
             match.SetActive(false);
             match.transform.SetParent(null, true);
 
-            // Возвращаем исходный размер для возможного повторного использования.
             match.transform.localScale = initialScale;
         }
 
-        // Полностью освобождаем состояние удержания предмета.
         activeCarriedVisual = null;
         inspectedItem = null;
         inspectedItemData = null;
@@ -544,7 +537,7 @@ public class ItemInspectionController : MonoBehaviour
 
         HideActionPrompt();
 
-        Debug.Log("Спичка догорела и исчезла.");
+        Debug.Log("-сірник");
     }
 
     public void SetCutscenePlaying(bool playing)

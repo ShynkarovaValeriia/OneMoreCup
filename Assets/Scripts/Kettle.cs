@@ -17,14 +17,13 @@ public class Kettle : MonoBehaviour, Interaction
     [Header("Interaction")]
     [SerializeField] private Collider interactionCollider;
 
-    // Работает ли чайник в данный момент?
     private bool isBoiling = false;
 
-    // Была ли уже запущена первая авария?
     private bool hasTriggeredOutage = false;
 
-    // Обработали ли отключение чайника во время аварии?
     private bool powerOutageHandled = false;
+
+    private bool powerRestorationHandled = false;
 
     [Header("Tea Pouring")]
     [SerializeField] private ItemInspectionController itemInspectionController;
@@ -48,7 +47,6 @@ public class Kettle : MonoBehaviour, Interaction
 
     private void Awake()
     {
-        // При запуске игры чайник выключен.
         if (steam != null)
         {
             steam.Stop(
@@ -81,8 +79,6 @@ public class Kettle : MonoBehaviour, Interaction
 
     public void Interact()
     {
-        // Если чайник работает, электричество восстановлено,
-        // а игрок держит чашку — начинаем кат-сцену наливания.
         if (isBoiling &&
             itemInspectionController != null &&
             itemInspectionController.IsHoldingCup &&
@@ -95,12 +91,9 @@ public class Kettle : MonoBehaviour, Interaction
             return;
         }
 
-        // Нельзя повторно включить уже работающий чайник.
         if (isBoiling)
             return;
 
-        // Во время отключения и восстановления электричества
-        // чайник включать нельзя.
         if (powerOutage != null &&
             (powerOutage.IsPowerOff ||
              powerOutage.IsPowerRestoring))
@@ -108,8 +101,6 @@ public class Kettle : MonoBehaviour, Interaction
             return;
         }
 
-        // Если первая авария уже произошла, но свет ещё
-        // не восстановился, повторно включать чайник нельзя.
         if (hasTriggeredOutage &&
             powerOutage != null &&
             !powerOutage.IsPowerRestored)
@@ -119,27 +110,26 @@ public class Kettle : MonoBehaviour, Interaction
 
         isBoiling = true;
 
-        // Завершаем первоначальную задачу приготовления чая
-        // только при первом включении чайника.
+        if (wakeUpIntro != null)
+        {
+            wakeUpIntro.StopObjectiveReminder();
+        }
+
         if (!hasTriggeredOutage && wakeUpIntro != null)
         {
             wakeUpIntro.CompleteTeaTask();
         }
 
-        // Включаем пар.
         if (steam != null)
         {
             steam.Play();
         }
 
-        // Включаем подсветку чайника.
         if (kettleLight != null)
         {
             kettleLight.enabled = true;
         }
 
-        // Первое включение запускает аварию.
-        // Повторное включение после ремонта этого не делает.
         if (!hasTriggeredOutage)
         {
             hasTriggeredOutage = true;
@@ -150,7 +140,7 @@ public class Kettle : MonoBehaviour, Interaction
             }
         }
 
-        Debug.Log("Чайник включён: пар и подсветка активированы!");
+        Debug.Log("Чайник ввімкнено");
     }
 
     private void Update()
@@ -158,13 +148,18 @@ public class Kettle : MonoBehaviour, Interaction
         if (powerOutage == null)
             return;
 
-        // Электричество полностью отключилось.
         if (powerOutage.IsPowerOff && !powerOutageHandled)
         {
             powerOutageHandled = true;
 
-            // Чайник выключается из-за аварии.
             isBoiling = false;
+
+            if (wakeUpIntro != null)
+            {
+                wakeUpIntro.StartObjectiveReminder(
+                    "Десь лежали сірники.."
+                );
+            }
 
             if (steam != null)
             {
@@ -179,17 +174,27 @@ public class Kettle : MonoBehaviour, Interaction
                 kettleLight.enabled = false;
             }
 
-            // Запрещаем взаимодействие во время отключения.
             if (interactionCollider != null)
             {
                 interactionCollider.enabled = false;
             }
 
-            Debug.Log("Чайник отключился из-за аварии электричества.");
+            Debug.Log("чайник вимкнено");
         }
 
-        // Только после полного восстановления электричества
-        // снова разрешаем включить чайник.
+        if (powerOutage.IsPowerRestored &&
+            !powerRestorationHandled)
+        {
+            powerRestorationHandled = true;
+
+            if (wakeUpIntro != null)
+            {
+                wakeUpIntro.StopObjectiveReminder();
+
+                wakeUpIntro.ShowMakeTeaReminder();
+            }
+        }
+
         if (powerOutage.IsPowerRestored &&
             interactionCollider != null &&
             !isBoiling)
@@ -205,25 +210,16 @@ public class Kettle : MonoBehaviour, Interaction
             itemInspectionController == null ||
             itemInspectionController.HeldCupTransform == null)
         {
-            Debug.LogWarning(
-                "Kettle: назначь Kettle Visual, Pouring Target " +
-                "и Item Inspection Controller.",
-                this
-            );
-
             yield break;
         }
 
         isPouring = true;
 
-        // Запоминаем исходное положение чайника.
         Vector3 originalPosition = kettleVisual.position;
         Quaternion originalRotation = kettleVisual.rotation;
 
-        // Сразу выключаем кипение.
         isBoiling = false;
 
-        // Выключаем пар.
         if (steam != null)
         {
             steam.Stop(
@@ -232,16 +228,13 @@ public class Kettle : MonoBehaviour, Interaction
             );
         }
 
-        // Выключаем подсветку чайника.
         if (kettleLight != null)
         {
             kettleLight.enabled = false;
         }
 
-        // Блокируем управление игроком на время кат-сцены.
         itemInspectionController.SetCutscenePlaying(true);
 
-        // 1. Поднимаем чайник и перемещаем к чашке.
         yield return MoveKettle(
             kettleVisual,
             pouringTarget.position,
@@ -249,7 +242,6 @@ public class Kettle : MonoBehaviour, Interaction
             kettleMoveDuration
         );
 
-        // 2. Включаем струю чая.
         if (teaStreamParticles != null)
         {
             teaStreamParticles.Clear();
@@ -258,7 +250,6 @@ public class Kettle : MonoBehaviour, Interaction
 
         yield return new WaitForSeconds(teaPourDuration);
 
-        // 3. Останавливаем появление новых частиц чая.
         if (teaStreamParticles != null)
         {
             teaStreamParticles.Stop(
@@ -267,13 +258,11 @@ public class Kettle : MonoBehaviour, Interaction
             );
         }
 
-        // 4. Показываем чай внутри чашки.
         if (cupTeaVisual != null)
             cupTeaVisual.SetActive(true);
 
         teaHasBeenPoured = true;
 
-        // 5. Плавно возвращаем чайник на место.
         yield return MoveKettle(
             kettleVisual,
             originalPosition,
@@ -281,7 +270,6 @@ public class Kettle : MonoBehaviour, Interaction
             kettleMoveDuration
         );
 
-        // 6. Возвращаем управление игроку.
         itemInspectionController.SetCutscenePlaying(false);
         isPouring = false;
 
@@ -290,7 +278,7 @@ public class Kettle : MonoBehaviour, Interaction
             wakeUpIntro.StartRestReminders();
         }
 
-        Debug.Log("Кат-сцена завершена: чай налит.");
+        Debug.Log("Чашка повна");
     }
 
     private System.Collections.IEnumerator MoveKettle(
@@ -311,7 +299,6 @@ public class Kettle : MonoBehaviour, Interaction
 
             float progress = Mathf.Clamp01(elapsed / duration);
 
-            // Плавное начало и завершение движения.
             float smoothProgress =
                 progress * progress * (3f - 2f * progress);
 

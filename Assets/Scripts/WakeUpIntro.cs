@@ -24,12 +24,16 @@ public class WakeUpIntro : MonoBehaviour
     private Coroutine reminderCoroutine;
 
     [Header("Rest Reminder")]
-    [SerializeField] private float restReminderInterval = 30f;
-    [SerializeField] private float restReminderDuration = 4f;
-
     private bool restTaskStarted = false;
     private bool restTaskCompleted = false;
-    private Coroutine restReminderCoroutine;
+
+    [Header("Objective Reminders")]
+    [SerializeField] private float objectiveReminderInterval = 30f;
+    [SerializeField] private float objectiveReminderDuration = 4f;
+
+    private Coroutine objectiveReminderCoroutine;
+    private bool objectiveReminderActive = false;
+    private string currentObjectiveReminder;
 
     [Header("Cup")]
     [SerializeField] private Transform cup;
@@ -120,21 +124,17 @@ public class WakeUpIntro : MonoBehaviour
 
         yield return new WaitForSeconds(initialPause);
 
-        // Sleepy glance to the left and back.
         yield return LookAround(lookLeftAngle);
         yield return LookAround(0f);
 
-        // Glance to the right and return to the television.
         yield return LookAround(lookRightAngle);
         yield return LookAround(0f);
 
-        // Look down at the cup.
         yield return RotateCameraPitch(lookDownAngle);
         yield return new WaitForSeconds(cupPause);
 
         yield return MoveCupToView();
 
-        // Героиня замечает, что чашка пустая.
         subtitleText.text = wakeUpLine;
         subtitleText.gameObject.SetActive(true);
 
@@ -143,14 +143,12 @@ public class WakeUpIntro : MonoBehaviour
             subtitleBackground.SetActive(true);
         }
 
-        // Сцена продолжается без дополнительной паузы.
         yield return new WaitForSeconds(cupPause);
         yield return ReturnCup();
 
         yield return RotateCameraPitch(0f);
         yield return StandUp();
 
-        // Скрываем субтитры после того, как героиня встала.
         subtitleText.gameObject.SetActive(false);
 
         if (subtitleBackground != null)
@@ -329,7 +327,6 @@ public class WakeUpIntro : MonoBehaviour
     {
         while (!teaTaskCompleted)
         {
-            // Ждём 30 секунд после предыдущего напоминания.
             yield return new WaitForSeconds(reminderInterval);
 
             if (teaTaskCompleted)
@@ -337,7 +334,6 @@ public class WakeUpIntro : MonoBehaviour
                 yield break;
             }
 
-            // Показываем мысль героини.
             subtitleText.text = wakeUpLine;
             subtitleText.gameObject.SetActive(true);
 
@@ -346,7 +342,6 @@ public class WakeUpIntro : MonoBehaviour
                 subtitleBackground.SetActive(true);
             }
 
-            // Оставляем фразу на экране на несколько секунд.
             yield return new WaitForSeconds(reminderDuration);
 
             if (teaTaskCompleted)
@@ -354,7 +349,6 @@ public class WakeUpIntro : MonoBehaviour
                 yield break;
             }
 
-            // Скрываем субтитры до следующего напоминания.
             subtitleText.gameObject.SetActive(false);
 
             if (subtitleBackground != null)
@@ -373,14 +367,12 @@ public class WakeUpIntro : MonoBehaviour
 
         teaTaskCompleted = true;
 
-        // Останавливаем дальнейшие напоминания.
         if (reminderCoroutine != null)
         {
             StopCoroutine(reminderCoroutine);
             reminderCoroutine = null;
         }
 
-        // Убираем фразу, если она сейчас отображается.
         subtitleText.gameObject.SetActive(false);
 
         if (subtitleBackground != null)
@@ -388,66 +380,85 @@ public class WakeUpIntro : MonoBehaviour
             subtitleBackground.SetActive(false);
         }
 
-        Debug.Log("Задание выполнено: чайник включён!");
+        Debug.Log("Чайник ввімкнен");
+    }
+
+    public void StartObjectiveReminder(string message)
+    {
+        StopObjectiveReminder();
+
+        currentObjectiveReminder = message;
+        objectiveReminderActive = true;
+
+        objectiveReminderCoroutine =
+            StartCoroutine(ObjectiveReminderRoutine());
+    }
+
+    public void StopObjectiveReminder()
+    {
+        objectiveReminderActive = false;
+
+        if (objectiveReminderCoroutine != null)
+        {
+            StopCoroutine(objectiveReminderCoroutine);
+            objectiveReminderCoroutine = null;
+        }
+
+        HideSubtitle();
+    }
+
+    private IEnumerator ObjectiveReminderRoutine()
+    {
+        while (objectiveReminderActive)
+        {
+            subtitleText.text = currentObjectiveReminder;
+            subtitleText.gameObject.SetActive(true);
+
+            if (subtitleBackground != null)
+                subtitleBackground.SetActive(true);
+
+            yield return new WaitForSeconds(objectiveReminderDuration);
+
+            if (!objectiveReminderActive)
+                yield break;
+
+            HideSubtitle();
+
+            float waitTime = Mathf.Max(
+                0f,
+                objectiveReminderInterval - objectiveReminderDuration
+            );
+
+            yield return new WaitForSeconds(waitTime);
+        }
+    }
+
+    private void HideSubtitle()
+    {
+        if (subtitleText != null)
+            subtitleText.gameObject.SetActive(false);
+
+        if (subtitleBackground != null)
+            subtitleBackground.SetActive(false);
     }
 
     public void ShowMatchReminder()
     {
-        StopAllCoroutines();
-        StartCoroutine(ShowMatchReminderRoutine());
+        StartObjectiveReminder("Десь лежали сірники..");
     }
-
-    private System.Collections.IEnumerator ShowMatchReminderRoutine()
-    {
-        subtitleText.text = "Десь лежали сірники..";
-
-        subtitleText.gameObject.SetActive(true);
-
-        if (subtitleBackground != null)
-            subtitleBackground.SetActive(true);
-
-        yield return new WaitForSeconds(4f);
-
-        subtitleText.gameObject.SetActive(false);
-
-        if (subtitleBackground != null)
-            subtitleBackground.SetActive(false);
-    }
-
-    private Coroutine fuseBoxReminderCoroutine;
-    private bool fuseBoxReminderShown = false;
 
     public void ShowFuseBoxReminder()
     {
-        if (fuseBoxReminderShown)
-            return;
-
-        fuseBoxReminderShown = true;
-
-        if (fuseBoxReminderCoroutine != null)
-            StopCoroutine(fuseBoxReminderCoroutine);
-
-        fuseBoxReminderCoroutine =
-            StartCoroutine(ShowFuseBoxReminderRoutine());
+        StartObjectiveReminder(
+            "Перевірю електрощиток. Може, вдасться повернути світло"
+        );
     }
 
-    private IEnumerator ShowFuseBoxReminderRoutine()
+    public void ShowMakeTeaReminder()
     {
-        subtitleText.text = "Перевірю електрощиток. Може, вдасться повернути світло";
-
-        subtitleText.gameObject.SetActive(true);
-
-        if (subtitleBackground != null)
-            subtitleBackground.SetActive(true);
-
-        yield return new WaitForSeconds(4f);
-
-        subtitleText.gameObject.SetActive(false);
-
-        if (subtitleBackground != null)
-            subtitleBackground.SetActive(false);
-
-        fuseBoxReminderCoroutine = null;
+        StartObjectiveReminder(
+            "Ну ось, світло знову є. Треба нарешті зробити собі чай"
+        );
     }
 
     public void StartRestReminders()
@@ -456,9 +467,15 @@ public class WakeUpIntro : MonoBehaviour
             return;
 
         restTaskStarted = true;
-        ShowRestReminder();
 
-        restReminderCoroutine = StartCoroutine(RestReminderRoutine());
+        if (finalCutscene != null)
+        {
+            finalCutscene.UnlockSofaInteraction();
+        }
+
+        StartObjectiveReminder(
+            "Чай готовий. Тепер можна трохи відпочити"
+        );
     }
 
     public void ShowRestReminder()
@@ -466,84 +483,16 @@ public class WakeUpIntro : MonoBehaviour
         if (restTaskCompleted)
             return;
 
-        StopCurrentSubtitle();
-        restSubtitleCoroutine = StartCoroutine(ShowRestReminderRoutine());
-    }
-
-    private IEnumerator ShowRestReminderRoutine()
-    {
-        subtitleText.text = "Чай готовий. Тепер можна трохи відпочити";
-
-        if (finalCutscene != null)
-        {
-            finalCutscene.UnlockSofaInteraction();
-        }
-
-        subtitleText.gameObject.SetActive(true);
-
-        if (subtitleBackground != null)
-            subtitleBackground.SetActive(true);
-
-        yield return new WaitForSeconds(restReminderDuration);
-
-        subtitleText.gameObject.SetActive(false);
-
-        if (subtitleBackground != null)
-            subtitleBackground.SetActive(false);
-
-        restSubtitleCoroutine = null;
-    }
-
-    private IEnumerator RestReminderRoutine()
-    {
-        while (!restTaskCompleted)
-        {
-            yield return new WaitForSeconds(restReminderInterval);
-
-            if (!restTaskCompleted)
-                ShowRestReminder();
-        }
+        StartRestReminders();
     }
 
     public void CompleteRestTask()
     {
+        if (restTaskCompleted)
+            return;
+
         restTaskCompleted = true;
 
-        if (restReminderCoroutine != null)
-        {
-            StopCoroutine(restReminderCoroutine);
-            restReminderCoroutine = null;
-        }
-
-        StopCurrentSubtitle();
-    }
-
-    private void StopCurrentSubtitle()
-    {
-        StopAllCoroutinesForRestSubtitle();
-
-        if (subtitleText != null)
-            subtitleText.gameObject.SetActive(false);
-
-        if (subtitleBackground != null)
-            subtitleBackground.SetActive(false);
-    }
-
-    private void StopAllCoroutinesForRestSubtitle()
-    {
-        // Останавливаем только корутины финального напоминания,
-        // чтобы не затронуть остальные сюжетные последовательности.
-        StopCoroutineIfRunning(ref restSubtitleCoroutine);
-    }
-
-    private Coroutine restSubtitleCoroutine;
-
-    private void StopCoroutineIfRunning(ref Coroutine routine)
-    {
-        if (routine != null)
-        {
-            StopCoroutine(routine);
-            routine = null;
-        }
+        StopObjectiveReminder();
     }
 }

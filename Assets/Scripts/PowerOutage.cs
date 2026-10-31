@@ -63,7 +63,7 @@ public class PowerOutage : MonoBehaviour
 
         StartCoroutine(ShowMatchReminderAfterDelay());
 
-        Debug.Log("Авария электричества: свет во всей квартире отключён!");
+        Debug.Log("Світло вимкнено всюди");
     }
 
     private IEnumerator ShowMatchReminderAfterDelay()
@@ -76,7 +76,6 @@ public class PowerOutage : MonoBehaviour
 
     public void RestorePower()
     {
-        // Восстанавливать можно только после отключения.
         if (!IsPowerOff || restorationStarted || IsPowerRestored)
             return;
 
@@ -88,15 +87,12 @@ public class PowerOutage : MonoBehaviour
     {
         IsPowerRestoring = true;
 
-        Debug.Log("Началось восстановление электричества!");
-
         float elapsed = 0f;
 
         while (elapsed < restorationDuration)
         {
             float progress = elapsed / restorationDuration;
 
-            // Мигание начинается быстро и постепенно замедляется.
             float interval = Mathf.Lerp(
                 restorationStartInterval,
                 restorationEndInterval,
@@ -112,7 +108,6 @@ public class PowerOutage : MonoBehaviour
             elapsed += interval * 1.5f;
         }
 
-        // Финальное состояние: свет остаётся включённым.
         SetApartmentLights(true);
 
         IsPowerOff = false;
@@ -124,7 +119,7 @@ public class PowerOutage : MonoBehaviour
             itemInspectionController.ExtinguishCarriedMatch();
         }
 
-        Debug.Log("Электричество восстановлено!");
+        Debug.Log("Світло є");
     }
 
     private void SetApartmentLights(bool state)
